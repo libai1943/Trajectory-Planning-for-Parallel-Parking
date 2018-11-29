@@ -1,0 +1,89 @@
+reset;
+
+model Normal.mod;
+include SZJ.INIVAL;
+option solver ipopt;
+solve;
+
+
+shell ("del " & ("x.txt"));
+shell ("del " & ("y.txt"));
+shell ("del " & ("t.txt"));
+shell ("del " & ("p.txt"));
+shell ("del " & ("v.txt"));
+shell ("del " & ("ttff.txt"));
+shell ("del " & ("NENE.txt"));
+shell ("del " & ("o.txt"));
+shell ("del " & ("a.txt"));
+shell ("del " & ("SL.txt"));
+shell ("del " & ("SW.txt"));
+shell ("del " & ("CL.txt"));
+
+shell ("del " & ("AX.txt"));
+shell ("del " & ("BX.txt"));
+shell ("del " & ("CX.txt"));
+shell ("del " & ("DX.txt"));
+
+shell ("del " & ("AY.txt"));
+shell ("del " & ("BY.txt"));
+shell ("del " & ("CY.txt"));
+shell ("del " & ("DY.txt"));
+
+printf "%5.5f; ",  tf>>("ttff.txt");
+printf "%5.5f; ",  NE>>("NENE.txt");
+
+
+
+   for {i in I} {
+     for {j in K} {
+		printf "%5.5f; ",  xij[i,j]>>("x.txt");
+		printf "%5.5f; ",  yij[i,j]>>("y.txt");
+		printf "%5.5f; ",  vij[i,j]>>("v.txt");
+		printf "%5.5f; ",  thetaij[i,j]>>("t.txt");
+			
+		printf "%5.5f; ",  phyij[i,j]>>("p.txt");
+		printf "%5.5f; ",  aij[i,j]>>("a.txt");
+
+		printf "%5.5f; ",  AXij[i,j]>>("AX.txt");
+		printf "%5.5f; ",  BXij[i,j]>>("BX.txt");
+		printf "%5.5f; ",  CXij[i,j]>>("CX.txt");
+		printf "%5.5f; ",  DXij[i,j]>>("DX.txt");
+
+		printf "%5.5f; ",  AYij[i,j]>>("AY.txt");
+		printf "%5.5f; ",  BYij[i,j]>>("BY.txt");
+		printf "%5.5f; ",  CYij[i,j]>>("CY.txt");
+		printf "%5.5f; ",  DYij[i,j]>>("DY.txt");
+		printf "%5.5f; ",  wij[i,j]>>("o.txt");
+		}
+	}
+
+	
+
+printf "%5.5f; ",  SW>>("SW.txt");
+printf "%5.5f; ",  SL>>("SL.txt");
+printf "%5.5f; ",  CL>>("CL.txt");
+close ("t.txt");
+close ("x.txt");
+close ("y.txt");
+close ("v.txt");
+close ("p.txt");
+close ("tf.txt");
+close ("NENE.txt");
+close ("a.txt");
+close ("o.txt");
+close ("tf.txt");
+close ("SW.txt");
+close ("SL.txt");
+close ("CL.txt");
+
+close ("AX.txt");
+close ("BX.txt");
+close ("CX.txt");
+close ("DX.txt");
+
+close ("AY.txt");
+close ("BY.txt");
+close ("CY.txt");
+close ("DY.txt");
+
+display tf;

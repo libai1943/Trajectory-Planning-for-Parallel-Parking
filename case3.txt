@@ -1,0 +1,359 @@
+param NE== 40;
+param NC == 2;
+
+################################# 车位尺寸参数
+param SL == 6.8;
+param SW == 2.5;
+param CL == 3.5;
+
+
+var tf>=1;
+var hi=tf/NE;
+set I :={1..NE};
+set I1:={1..NE-1};
+set J :={1..3};
+set K :={0..3};
+param tauj{j in K};
+param dljtauk{j in K,k in J};
+param omega{j in J};
+param PPP{ii in {1..NC}, jj in {1..4}, m in {1..2}};
+
+param duandian == 20;
+
+set L1 :={1..duandian};
+set L2 :={duandian+1..NE};
+set L3 :={duandian+1..NE-1};
+
+################################# 初值末值
+param x0 == 11.5;
+param y0 == 1.5;
+param theta0 == 0;
+param v0 == 0;
+param vtf == 0;
+
+################################# 边界限制参数
+param amax == 1.5;
+param vmax == 2;
+param jerkmax == 1;
+param dcurmax = 0.6;
+param phymax == 0.714; # 汽车的前轮转向角度待定Audi A8L
+
+
+################################# 车体尺寸参数
+param n == 1.003;
+param l == 3.122;
+param m == 1.143;
+param b == 0.9745;
+
+################################# 声明
+var xij{i in I,j in K};
+var yij{i in I,j in K};
+var thetaij{i in I,j in K};
+var vij{i in I,j in K};
+var aij{i in I,j in K};
+var jerkij{i in I,j in K};
+var phyij{i in I,j in K};
+var wij{i in I,j in K};
+
+var AX{i in I,j in K};
+var BX{i in I,j in K};
+var CX{i in I,j in K};
+var DX{i in I,j in K};
+
+var AY{i in I,j in K};
+var BY{i in I,j in K};
+var CY{i in I,j in K};
+var DY{i in I,j in K};
+
+################################# 优化时间
+
+minimize f:
+tf;
+
+s.t. timer:
+tf <= 17.89952;
+
+
+
+
+################################# 微分方程动力学部分
+s.t. DIFF_dxdt {i in I,k in J}:
+sum{j in K}(dljtauk[j,k]*xij[i,j])-hi*vij[i,k]*cos(thetaij[i,k])=0;
+
+s.t. DIFF_dydt {i in I,k in J}:
+sum{j in K}(dljtauk[j,k]*yij[i,j])-hi*vij[i,k]*sin(thetaij[i,k])=0;
+
+s.t. DIFF_dvdt {i in I,k in J}:
+sum{j in K}(dljtauk[j,k]*vij[i,j])-hi*aij[i,k]=0;
+
+s.t. DIFF_dthetadt {i in I,k in J}:
+sum{j in K}(dljtauk[j,k]*thetaij[i,j])-hi*(sin(phyij[i,k]))*vij[i,k]/l=0;
+
+s.t. DIFF_dphydt {i in I,k in J}:
+sum{j in K}(dljtauk[j,k]*phyij[i,j])-hi*wij[i,k]=0;
+
+s.t. DIFF_dadt {i in I,k in J}:
+sum{j in K}(dljtauk[j,k]*aij[i,j]) - hi*jerkij[i,k]=0;
+
+
+
+
+s.t. EQ_diffx {i in I1}:
+xij[i+1,0]=sum{j in K}((prod{k in K:k<>j}((1-tauj[k])/(tauj[j]-tauj[k])))*xij[i,j]);
+
+s.t. EQ_diffy {i in I1}:
+yij[i+1,0]=sum{j in K}((prod{k in K:k<>j}((1-tauj[k])/(tauj[j]-tauj[k])))*yij[i,j]);
+
+s.t. EQ_diffv {i in I1}:
+vij[i+1,0]=sum{j in K}((prod{k in K:k<>j}((1-tauj[k])/(tauj[j]-tauj[k])))*vij[i,j]);
+
+s.t. EQ_difftheta {i in I1}:
+thetaij[i+1,0]=sum{j in K}((prod{k in K:k<>j}((1-tauj[k])/(tauj[j]-tauj[k])))*thetaij[i,j]);
+
+s.t. EQ_diffphy {i in I1}:
+phyij[i+1,0]=sum{j in K}((prod{k in K:k<>j}((1-tauj[k])/(tauj[j]-tauj[k])))*phyij[i,j]);
+
+s.t. EQ_diffa {i in I1}:
+aij[i+1,0]=sum{j in K}((prod{k in K:k<>j}((1-tauj[k])/(tauj[j]-tauj[k])))*aij[i,j]);
+
+
+
+################################# 初末值简单边界约束
+s.t. EQ_starting_x :
+xij[1,0] = x0;
+
+s.t. EQ_starting_y :
+yij[1,0] = y0;
+
+s.t. EQ_starting_v :
+vij[1,0] = v0;
+
+s.t. EQ_starting_theta :
+thetaij[1,0] = theta0;
+
+s.t. EQ_starting_phy :
+phyij[1,0] = 0;
+
+s.t. EQ_starting_a :
+aij[1,0] = 0;
+
+
+
+s.t. EQ_end_v :
+vij[NE,3] = vtf;
+
+################################# 状态及控制变量的上下界限制
+
+s.t. Bonds_v {i in I,j in K}:
+(vij[i,j])^2 <= (vmax)^2;
+
+s.t. Bonds_w {i in I,j in K}:
+(wij[i,j]/(((cos(phyij[i,j]))^2)*l))^2 <= (dcurmax)^2;
+
+s.t. Bonds_a {i in I,j in K}:
+(aij[i,j])^2 <= (amax)^2;
+
+s.t. Bonds_phy {i in I,j in K}:
+phyij[i,j]^2 <= (phymax)^2;
+
+
+
+s.t. Bonds_da {i in I,j in K}:
+jerkij[i,j]^2 <= (jerkmax)^2;
+
+################################# ABCD  OE   几何关系式
+
+s.t. RELATIONSHIP_AX {i in I,j in K}:
+AX[i,j] = xij[i,j] + n * cos(thetaij[i,j]) - b * sin(thetaij[i,j]);
+
+s.t. RELATIONSHIP_BX {i in I,j in K}:
+BX[i,j] = xij[i,j] + n * cos(thetaij[i,j]) + b * sin(thetaij[i,j]);
+
+s.t. RELATIONSHIP_CX {i in I,j in K}:
+CX[i,j] = xij[i,j] - (m + l) * cos(thetaij[i,j]) + b * sin(thetaij[i,j]);
+
+s.t. RELATIONSHIP_DX {i in I,j in K}:
+DX[i,j] = xij[i,j] - (m + l) * cos(thetaij[i,j]) - b * sin(thetaij[i,j]);
+
+s.t. RELATIONSHIP_AY {i in I,j in K}:
+AY[i,j] = yij[i,j] + n * sin(thetaij[i,j]) + b * cos(thetaij[i,j]);
+
+s.t. RELATIONSHIP_BY {i in I,j in K}:
+BY[i,j] = yij[i,j] + n * sin(thetaij[i,j]) - b * cos(thetaij[i,j]);
+
+s.t. RELATIONSHIP_CY {i in I,j in K}:
+CY[i,j] = yij[i,j] - (m + l) * sin(thetaij[i,j]) - b * cos(thetaij[i,j]);
+
+s.t. RELATIONSHIP_DY {i in I,j in K}:
+DY[i,j] = yij[i,j] - (m + l) * sin(thetaij[i,j]) + b * cos(thetaij[i,j]);
+
+
+
+
+
+################################# 始终存在的限制，防止碰撞
+
+s.t. eq_PPoutsideABCD {ii in {1..NC}, jj in {1..4}, i in L1, j in K}:
+abs((AX[i,j] - PPP[ii,jj,1])*(BY[i,j] - PPP[ii,jj,2]) - (AY[i,j] - PPP[ii,jj,2])*(BX[i,j] - PPP[ii,jj,1])) * 0.5 + abs((BX[i,j] - PPP[ii,jj,1])*(CY[i,j] - PPP[ii,jj,2]) - (BY[i,j] - PPP[ii,jj,2])*(CX[i,j] - PPP[ii,jj,1])) * 0.5 + abs((CX[i,j] - PPP[ii,jj,1])*(DY[i,j] - PPP[ii,jj,2]) - (CY[i,j] - PPP[ii,jj,2])*(DX[i,j] - PPP[ii,jj,1])) * 0.5 + abs((DX[i,j] - PPP[ii,jj,1])*(AY[i,j] - PPP[ii,jj,2]) - (DY[i,j] - PPP[ii,jj,2])*(AX[i,j] - PPP[ii,jj,1])) * 0.5 >= (l+n+m)*2*b + 0.3;
+
+
+s.t. eq_AoutsidePRECTANGLE {ii in {1..NC}, i in L1, j in K}:
+abs((PPP[ii,1,1] - AX[i,j])*( PPP[ii,2,2] - AY[i,j]) - (PPP[ii,1,2] - AY[i,j])*(PPP[ii,2,1] - AX[i,j])) * 0.5 + abs((PPP[ii,2,1] - AX[i,j])*(PPP[ii,3,2] - AY[i,j]) - (PPP[ii,2,2] - AY[i,j])*( PPP[ii,3,1] - AX[i,j])) * 0.5 + abs((PPP[ii,3,1] - AX[i,j])*( PPP[ii,4,2] - AY[i,j]) - (PPP[ii,3,2] - AY[i,j])*( PPP[ii,4,1] - AX[i,j])) * 0.5 + abs((PPP[ii,4,1] - AX[i,j])*( PPP[ii,1,2] - AY[i,j]) - (PPP[ii,4,2] - AY[i,j])*( PPP[ii,1,1] - AX[i,j])) * 0.5 >= sqrt((PPP[ii,1,1] - PPP[ii,2,1])^2 + (PPP[ii,1,2] - PPP[ii,2,2])^2) * sqrt((PPP[ii,1,1] - PPP[ii,4,1])^2 + (PPP[ii,1,2] - PPP[ii,4,2])^2) + 0.3;
+
+
+s.t. eq_BoutsidePRECTANGLE {ii in {1..NC}, i in L1, j in K}:
+abs((PPP[ii,1,1] - BX[i,j])*( PPP[ii,2,2] - BY[i,j]) - (PPP[ii,1,2] - BY[i,j])*(PPP[ii,2,1] - BX[i,j])) * 0.5 + abs((PPP[ii,2,1] - BX[i,j])*(PPP[ii,3,2] - BY[i,j]) - (PPP[ii,2,2] - BY[i,j])*( PPP[ii,3,1] - BX[i,j])) * 0.5 + abs((PPP[ii,3,1] - BX[i,j])*( PPP[ii,4,2] - BY[i,j]) - (PPP[ii,3,2] - BY[i,j])*( PPP[ii,4,1] - BX[i,j])) * 0.5 + abs((PPP[ii,4,1] - BX[i,j])*( PPP[ii,1,2] - BY[i,j]) - (PPP[ii,4,2] - BY[i,j])*( PPP[ii,1,1] - BX[i,j])) * 0.5 >= sqrt((PPP[ii,1,1] - PPP[ii,2,1])^2 + (PPP[ii,1,2] - PPP[ii,2,2])^2) * sqrt((PPP[ii,1,1] - PPP[ii,4,1])^2 + (PPP[ii,1,2] - PPP[ii,4,2])^2) + 0.3;
+
+
+s.t. eq_CoutsidePRECTANGLE {ii in {1..NC}, i in L1, j in K}:
+abs((PPP[ii,1,1] - CX[i,j])*( PPP[ii,2,2] - CY[i,j]) - (PPP[ii,1,2] - CY[i,j])*(PPP[ii,2,1] - CX[i,j])) * 0.5 + abs((PPP[ii,2,1] - CX[i,j])*(PPP[ii,3,2] - CY[i,j]) - (PPP[ii,2,2] - CY[i,j])*( PPP[ii,3,1] - CX[i,j])) * 0.5 + abs((PPP[ii,3,1] - CX[i,j])*( PPP[ii,4,2] - CY[i,j]) - (PPP[ii,3,2] - CY[i,j])*( PPP[ii,4,1] - CX[i,j])) * 0.5 + abs((PPP[ii,4,1] - CX[i,j])*( PPP[ii,1,2] - CY[i,j]) - (PPP[ii,4,2] - CY[i,j])*( PPP[ii,1,1] - CX[i,j])) * 0.5 >= sqrt((PPP[ii,1,1] - PPP[ii,2,1])^2 + (PPP[ii,1,2] - PPP[ii,2,2])^2) * sqrt((PPP[ii,1,1] - PPP[ii,4,1])^2 + (PPP[ii,1,2] - PPP[ii,4,2])^2) + 0.3;
+
+
+s.t. eq_DoutsidePRECTANGLE {ii in {1..NC}, i in L1, j in K}:
+abs((PPP[ii,1,1] - DX[i,j])*( PPP[ii,2,2] - DY[i,j]) - (PPP[ii,1,2] - DY[i,j])*(PPP[ii,2,1] - DX[i,j])) * 0.5 + abs((PPP[ii,2,1] - DX[i,j])*(PPP[ii,3,2] - DY[i,j]) - (PPP[ii,2,2] - DY[i,j])*( PPP[ii,3,1] - DX[i,j])) * 0.5 + abs((PPP[ii,3,1] - DX[i,j])*( PPP[ii,4,2] - DY[i,j]) - (PPP[ii,3,2] - DY[i,j])*( PPP[ii,4,1] - DX[i,j])) * 0.5 + abs((PPP[ii,4,1] - DX[i,j])*( PPP[ii,1,2] - DY[i,j]) - (PPP[ii,4,2] - DY[i,j])*( PPP[ii,1,1] - DX[i,j])) * 0.5 >= sqrt((PPP[ii,1,1] - PPP[ii,2,1])^2 + (PPP[ii,1,2] - PPP[ii,2,2])^2) * sqrt((PPP[ii,1,1] - PPP[ii,4,1])^2 + (PPP[ii,1,2] - PPP[ii,4,2])^2) + 0.3;
+
+
+
+################################# 始终存在的限制，防止碰撞
+
+s.t. changgui_boxAX {i in L1,j in K}:
+(AX[i,j] - SL/2)^2 <= (SL/2 + 10)^2;
+
+s.t. changgui_boxBX {i in L1,j in K}:
+(BX[i,j] - SL/2)^2 <= (SL/2 + 10)^2;
+
+s.t. changgui_boxCX {i in L1,j in K}:
+(CX[i,j] - SL/2)^2 <= (SL/2 + 10)^2;
+
+s.t. changgui_boxDX {i in L1,j in K}:
+(DX[i,j] - SL/2)^2 <= (SL/2 + 10)^2;
+
+
+s.t. changgui_boxAY {i in L1,j in K}:
+(AY[i,j] - CL/2 + SW/2)^2 <= (SW/2 + CL/2)^2;
+
+s.t. changgui_boxBY {i in L1,j in K}:
+(BY[i,j] - CL/2 + SW/2)^2 <= (SW/2 + CL/2)^2;
+
+s.t. changgui_boxCY {i in L1,j in K}:
+(CY[i,j] - CL/2 + SW/2)^2 <= (SW/2 + CL/2)^2;
+
+s.t. changgui_boxDY {i in L1,j in K}:
+(DY[i,j] - CL/2 + SW/2)^2 <= (SW/2 + CL/2)^2;
+
+
+
+
+
+
+################################# 末值约束
+s.t. COMPARISON_A_t:
+(AX[NE,3] - SL/2)^2 <= (SL/2)^2;
+
+s.t. COMPARISON_B_t:
+(BX[NE,3] - SL/2)^2 <= (SL/2)^2;
+
+s.t. COMPARISON_C_t:
+(CX[NE,3] - SL/2)^2 <= (SL/2)^2;
+
+s.t. COMPARISON_D_t:
+(DX[NE,3] - SL/2)^2 <= (SL/2)^2;
+
+s.t. EQ_AYtf02 :
+(AY[NE,3] + SW/2)^2 <= (SW/2)^2;
+
+s.t. EQ_BYtf02 :
+(BY[NE,3] + SW/2)^2 <= (SW/2)^2;
+
+s.t. EQ_CYtf02 :
+(CY[NE,3] + SW/2)^2 <= (SW/2)^2;
+
+s.t. EQ_DYtf02 :
+(DY[NE,3] + SW/2)^2 <= (SW/2)^2;
+ 
+
+
+
+
+
+
+
+
+
+################################# 普遍性关键约束ceiling部分
+s.t. COMPARISON_A_1 {i in L2,j in K}:
+(AX[i,j] - SL/2)^2 <= (SL/2)^2;
+
+s.t. COMPARISON_B_1 {i in L2,j in K}:
+(BX[i,j] - SL/2)^2 <= (SL/2)^2;
+
+s.t. COMPARISON_C_1 {i in L2,j in K}:
+(CX[i,j] - SL/2)^2 <= (SL/2)^2;
+
+s.t. COMPARISON_D_1 {i in L2,j in K}:
+(DX[i,j] - SL/2)^2 <= (SL/2)^2;
+
+s.t. COMPARISON_A_2 {i in L2,j in K}:
+(AY[i,j])^2 <= (SW)^2;
+
+s.t. COMPARISON_B_2 {i in L2,j in K}:
+(BY[i,j])^2 <= (SW)^2;
+
+s.t. COMPARISON_C_2 {i in L2,j in K}:
+(CY[i,j])^2 <= (SW)^2;
+
+s.t. COMPARISON_D_2 {i in L2,j in K}:
+(DY[i,j])^2 <= (SW)^2;
+
+
+
+
+
+
+
+
+
+
+
+
+
+data;
+param: dljtauk :=
+0  1  -4.13939
+0  2   1.73939
+0  3  -3
+1  1    3.22474
+1  2   -3.56784
+1  3   5.53197
+2  1   1.16784
+2  2    0.775255
+2  3  -7.53197
+3  1  -0.253197
+3  2   1.0532
+3  3    5;
+
+param: tauj :=
+	0		0
+	1		0.1550510257216822
+	2		0.6449489742783178
+	3		1.0;
+	
+	
+param: PPP :=
+
+1	1	1	6.8
+1	1	2	0
+1	2	1	6.8
+1	2	2	-2.5
+1	3	1	16.8
+1	3	2	-2.5
+1	4	1	16.8
+1	4	2	0
+2	1	1	0
+2	1	2	0
+2	2	1	0
+2	2	2	-2.5
+2	3	1	-10
+2	3	2	-2.5
+2	4	1	-10
+2	4	2	0;
